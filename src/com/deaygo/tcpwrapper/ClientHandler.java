@@ -2,26 +2,47 @@ package com.deaygo.tcpwrapper;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
 
+import com.deaygo.tcpwrapper.events.EventManager;
+
 public class ClientHandler implements Runnable
 {
 	Socket	sock;
-
-	public ClientHandler(final Socket sock)
+	TCPWrapper wrapper;
+	BufferedInputStream is = null;
+    BufferedOutputStream os = null;
+    OutputStreamWriter osw = null;
+    Console console;
+	
+	public ClientHandler(final Socket sock, final TCPWrapper wrapper)
 	{
+	    console = System.console();
 		this.sock = sock;
+		this.wrapper = wrapper;
+	}
+	
+	public void sendMessage(String message) {
+        
+        try
+        {
+            osw.write(message + "\r\n");
+            osw.flush();
+        }
+        catch (final IOException e)
+        {
+            e.printStackTrace();
+        }
 	}
 
 	@Override
 	public void run()
 	{
-		BufferedInputStream is = null;
-		BufferedOutputStream os = null;
-		OutputStreamWriter osw = null;
+		
 		try
 		{
 			is = new BufferedInputStream(sock.getInputStream());
@@ -45,7 +66,7 @@ public class ClientHandler implements Runnable
 			return;
 		}
 		final InputStreamReader isr = new InputStreamReader(is);
-		while (sock.isConnected() && !sock.isClosed())
+		while ( sock != null && sock.isConnected() && !sock.isClosed())
 		{
 			try
 			{
@@ -55,6 +76,8 @@ public class ClientHandler implements Runnable
 				{
 					ch = isr.read();
 
+					if (ch == -1 ) break;
+					
 					if (ch == '\r')
 					{
 						continue;
@@ -67,22 +90,43 @@ public class ClientHandler implements Runnable
 				}
 
 				System.out.println(process);
-
+				/*
 				if (process.toString().equalsIgnoreCase("quit"))
 				{
 					sock.close();
 					break;
-				}
+				}*/
+				
+				int loc = process.indexOf(" ");
+				if (loc == -1 ) loc = process.length();
+				String command = process.substring(0, loc);
+				
+				if ( loc + 1 > process.length() )
+				    loc = process.length();
+				else
+				    loc++;
+				
+				process.replace(0, loc , "");
+				String[] args = process.toString().split(" ");
 
-				final String returnCode = "MultipleSocketServer repsonded\r\n";
-				osw.write(returnCode);
+				System.out.println("Command: " + command);
+				
+				String returnCode = wrapper.events.fireCommandEvent(this, command, args);
+				if ( returnCode == null ) returnCode = "";
+				osw.write(returnCode + "\r\n");
 				osw.flush();
 
 				process = null;
 			}
 			catch (final Exception e)
 			{
-				e.printStackTrace();
+				try {
+                    sock.close();
+                } catch (IOException e1) {
+
+                }
+                wrapper.events.fireDisconnectEvent(this);
+				sock = null;
 			}
 		}
 

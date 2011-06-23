@@ -1,5 +1,7 @@
 package com.deaygo.tcpwrapper.events;
 
+import com.deaygo.tcpwrapper.ClientHandler;
+
 public interface CommandInterface
 {
 	/**
@@ -11,5 +13,5 @@ public interface CommandInterface
 	 *            The arguments of the command.
 	 * @return The response to the client, null if no message is to be sent.
 	 */
-	String onCommand(String command, String[] args);
+	String onCommand(ClientHandler client, String command, String[] args);
 }

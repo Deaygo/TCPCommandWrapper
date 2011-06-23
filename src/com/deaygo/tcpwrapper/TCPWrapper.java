@@ -1,6 +1,7 @@
 package com.deaygo.tcpwrapper;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -8,6 +9,7 @@ import jline.ConsoleReader;
 
 import org.deaygo.util.encryption.EncryptionManager;
 
+import com.deaygo.tcpwrapper.events.EventManager;
 import com.deaygo.tcpwrapper.util.AppConfig;
 
 public class TCPWrapper implements Runnable
@@ -23,6 +25,8 @@ public class TCPWrapper implements Runnable
 		{
 			final ConsoleReader consoleReader = new ConsoleReader();
 			String line;
+			final PrintWriter out = new PrintWriter(System.out);
+
 			while ((line = consoleReader.readLine("> ")) != null)
 			{
 				if (line.equalsIgnoreCase("quit"))
@@ -30,8 +34,8 @@ public class TCPWrapper implements Runnable
 					wrap.close();
 					break;
 				}
-				System.out.println("======>\"" + line + "\"");
-				System.out.flush();
+				out.println("======>\"" + line + "\"");
+				out.flush();
 			}
 		}
 		catch (final IOException e)
@@ -44,6 +48,7 @@ public class TCPWrapper implements Runnable
 
 	private ServerSocket			socket;
 	private Thread					acceptThread;
+	public EventManager             events = new EventManager();
 	private volatile boolean		aborting	= false;
 
 	public TCPWrapper()
@@ -108,12 +113,15 @@ public class TCPWrapper implements Runnable
 			try
 			{
 				final Socket sock = socket.accept();
-				final Thread thread = new Thread(new ClientHandler(sock));
+				final Thread thread = new Thread(new ClientHandler(sock, this));
 				thread.start();
 			}
 			catch (final IOException e)
 			{
-				e.printStackTrace();
+				if (!aborting)
+				{
+					e.printStackTrace();
+				}
 			}
 		}
 	}

@@ -2,16 +2,25 @@ package com.deaygo.tcpwrapper.events;
 
 import java.util.HashMap;
 
+import com.deaygo.tcpwrapper.ClientHandler;
+
 public class EventManager
 {
-	private static HashMap<String, CommandInterface>	commands;
+	private HashMap<String, CommandInterface>	commands = new HashMap<String, CommandInterface>();
+	private CommandInterface disconnect = null;
 
-	public static boolean addCommandListener(final String command, final CommandInterface callback)
+	public boolean addCommandListener(final String command, final CommandInterface callback)
 	{
 		return addCommandListener(command, callback, false);
 	}
+	
+	public boolean addDisconnectListener(final CommandInterface callback)
+    {
+	    disconnect = callback;
+	    return true;
+    }
 
-	public static boolean addCommandListener(final String command, final CommandInterface callback, final boolean replaceIfExists)
+	public boolean addCommandListener(final String command, final CommandInterface callback, final boolean replaceIfExists)
 	{
 		if (!replaceIfExists && commands.containsKey(command))
 		{
@@ -23,13 +32,19 @@ public class EventManager
 		return true;
 	}
 
-	public static String fireCommandEvent(final String command, final String[] args)
+	public String fireCommandEvent(ClientHandler client, final String command, final String[] args)
 	{
 		if (!commands.containsKey(command))
 		{
 			return null;
 		}
 
-		return commands.get(command).onCommand(command, args);
+		return commands.get(command).onCommand(client, command, args);
+	}
+	
+	public void fireDisconnectEvent(ClientHandler client)
+	{
+	    if ( disconnect != null )
+	        disconnect.onCommand(client, null, null);
 	}
 }
